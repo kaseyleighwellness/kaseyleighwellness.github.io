@@ -93,6 +93,18 @@
     </div>
 
     <div class="card">
+      <h2>Bigger changes with Claude</h2>
+      <p class="sub">For removing or adding whole sections. Step 1: copy your Hub and paste it to Claude. Step 2: paste Claude's edited version back here.</p>
+      <div class="actions" style="margin-top:0"><button class="small ghost" id="copyBtn">Copy my Hub for Claude</button></div>
+      <div class="note" id="copyMsg" style="margin-top:8px"></div>
+      <textarea id="copyFallback" readonly hidden></textarea>
+      <label class="lbl" for="pasteBox">PASTE CLAUDE'S EDITED VERSION</label>
+      <textarea id="pasteBox" placeholder="Paste the full edited Hub from Claude here"></textarea>
+      <div class="actions"><button class="small" id="usePaste">Use Claude's version</button></div>
+      <div class="err" id="pasteErr"></div>
+    </div>
+
+    <div class="card">
       <h2>Ready?</h2>
       <div id="summary" class="note">No changes yet.</div>
       <div class="actions">
@@ -158,7 +170,7 @@
   }
   const tail = (s, n) => s.length > n ? '…' + s.slice(-n) : s;
 
-  let gateSrc = '', plain = '', password = '';
+  let gateSrc = '', plain = '', password = '', original = '';
   let urls = [];       // {id, value, host, occ:[{start,end,amp}], label, context, ctxLong}
   let passcodes = [];  // {id, value, start, end, context}
   let queued = [];     // parsed change-code entries with UI state
@@ -298,6 +310,7 @@
   // ---------- building the new Hub ----------
   function buildChanges() {
     const edits = [], summary = [], problems = [];
+    if (plain !== original) summary.push('<b>Your Hub now uses the version Claude edited for you.</b> Preview it before you lock it.');
     urls.forEach(u => {
       const inp = $('lin' + u.id);
       const nv = inp.value.trim();
@@ -391,6 +404,7 @@
       try { plain = await decryptPayload(m[1], pw); }
       catch (x) { err.textContent = "That password isn't right. Use the same one that opens your Hub."; return; }
       password = pw;
+      original = plain;
       urls = scanUrls(plain);
       passcodes = scanPasscodes(plain);
       renderLinks();
@@ -402,6 +416,33 @@
     } finally {
       $('unlockBtn').disabled = false; $('unlockBtn').textContent = 'Unlock my Hub';
     }
+  });
+
+  $('copyBtn').addEventListener('click', async () => {
+    const msg = $('copyMsg'), fb = $('copyFallback');
+    try {
+      await navigator.clipboard.writeText(plain);
+      fb.hidden = true;
+      msg.innerHTML = '<span class="ok">Copied! Now paste it into your chat with Claude and say what to change.</span>';
+    } catch (e) {
+      fb.value = plain; fb.hidden = false; fb.focus(); fb.select();
+      msg.textContent = 'Your browser blocked the copy button. Press Cmd+C now (everything below is already selected), then paste it to Claude.';
+    }
+  });
+
+  $('usePaste').addEventListener('click', () => {
+    const err = $('pasteErr'); err.textContent = '';
+    let v = $('pasteBox').value.trim().replace(/^```\w*\s*|\s*```$/g, '');
+    if (!v) { err.textContent = "Paste Claude's edited version first, love."; return; }
+    if (!/<html[\s>]/i.test(v) || !/<\/html>\s*$/i.test(v)) { err.textContent = "That doesn't look like the whole Hub. Copy Claude's full version, from the very top to the very bottom, and try again."; return; }
+    plain = v;
+    urls = scanUrls(plain);
+    passcodes = scanPasscodes(plain);
+    queued = []; $('queued').innerHTML = ''; $('codeBox').value = '';
+    renderLinks();
+    $('frRows').innerHTML = ''; addFrRow();
+    err.innerHTML = '<span class="ok">Got it. Click Preview my Hub to check it.</span>';
+    refresh();
   });
 
   $('loadCode').addEventListener('click', loadCode);
