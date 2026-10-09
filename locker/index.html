@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasey's Hub — Locker</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0; font-family:Helvetica,Arial,sans-serif; background:#f6f4ef; color:#2b2b33; line-height:1.45}
+  .wrap{max-width:760px; margin:0 auto; padding:40px 16px 80px}
+  .card{background:#fff; border:1px solid #e2ddd2; border-radius:18px; padding:28px; margin-bottom:18px; box-shadow:0 20px 50px -28px rgba(51,38,43,.25)}
+  .gate{max-width:400px; margin:8vh auto 0; text-align:center}
+  h1{font-family:Georgia,serif; font-size:26px; margin:0 0 6px}
+  h1 span{color:#8A2F4A; font-style:italic}
+  h2{font-family:Georgia,serif; font-size:20px; margin:0 0 4px}
+  p.sub{color:#6d6d7a; font-size:14px; margin:0 0 20px}
+  label.lbl{display:block; text-align:left; font-size:12px; font-weight:bold; letter-spacing:.8px; color:#6d6d7a; margin:14px 0 5px}
+  input[type=text],input[type=password],input[type=url],textarea,select{width:100%; padding:11px 13px; font-size:15px; border:1.5px solid #d8d3c8; border-radius:10px; outline:none; font-family:inherit; background:#fff; color:#2b2b33}
+  textarea{min-height:90px; font-family:Menlo,Consolas,monospace; font-size:13px}
+  input:focus,textarea:focus,select:focus{border-color:#4f7a52}
+  button{background:#4f7a52; color:#fff; border:none; border-radius:100px; padding:13px 22px; font-size:15px; font-weight:bold; cursor:pointer}
+  button:hover{background:#3e5641}
+  button.ghost{background:#fff; color:#4f7a52; border:1.5px solid #4f7a52}
+  button.ghost:hover{background:#eef3ee}
+  button.small{padding:8px 14px; font-size:13px}
+  button:disabled{opacity:.5; cursor:default}
+  .full{width:100%; margin-top:20px}
+  .err{color:#a05252; font-size:13px; margin-top:12px; min-height:18px}
+  .ok{color:#3e5641}
+  .lock{font-size:30px; margin-bottom:10px}
+  .row{border:1px solid #ece8df; border-radius:12px; padding:14px; margin-top:12px}
+  .row.changed{border-color:#4f7a52; background:#f3f7f2}
+  .row .name{font-weight:bold; font-size:14px}
+  .row .ctx{color:#6d6d7a; font-size:12px; margin:2px 0 8px; overflow-wrap:anywhere}
+  .row .newval{font-size:13px; margin-top:8px; overflow-wrap:anywhere}
+  .check{display:flex; gap:8px; align-items:center; font-size:14px; margin-top:10px}
+  .fr{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-top:10px; align-items:center}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px}
+  ul.summary{padding-left:20px; font-size:14px; margin:8px 0 0}
+  ul.summary li{margin-bottom:4px; overflow-wrap:anywhere}
+  ol.steps{padding-left:22px; font-size:15px}
+  ol.steps li{margin-bottom:8px}
+  .note{font-size:13px; color:#6d6d7a}
+  .warn{color:#a05252; font-size:13px; margin-top:6px}
+  [hidden]{display:none !important}
+  @media (max-width:560px){ .card{padding:20px} .fr{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- STEP 1: UNLOCK -->
+  <section id="lockView" class="card gate">
+    <div class="lock">🔐</div>
+    <h1>Hub <span>Locker</span></h1>
+    <p class="sub">Update your Hub. Your password never leaves this browser.</p>
+    <form id="unlockForm">
+      <label class="lbl" for="pw">HUB PASSWORD</label>
+      <input id="pw" type="password" autocomplete="current-password">
+      <button type="submit" class="full" id="unlockBtn">Unlock my Hub</button>
+      <div class="err" id="unlockErr"></div>
+    </form>
+  </section>
+
+  <!-- STEP 2: EDIT -->
+  <section id="editView" hidden>
+    <div class="card">
+      <h1>Hub <span>Locker</span></h1>
+      <p class="sub" style="margin:0">You're in. Make your changes below, then hit <b>Lock &amp; Download</b> at the bottom.</p>
+    </div>
+
+    <div class="card">
+      <h2>Changes from Claude</h2>
+      <p class="sub">Got a change code from Claude? Paste it here. (Skip this if you're changing things yourself.)</p>
+      <textarea id="codeBox" placeholder="Paste the change code here"></textarea>
+      <div class="actions"><button class="small" id="loadCode">Load changes</button></div>
+      <div class="err" id="codeErr"></div>
+      <div id="queued"></div>
+    </div>
+
+    <div class="card">
+      <h2>Every link on your Hub</h2>
+      <p class="sub">To change a link, paste the new one into its box. Green means it will change.</p>
+      <div id="links"></div>
+    </div>
+
+    <div class="card">
+      <h2>Change any words</h2>
+      <p class="sub">Type the exact words that are on the Hub now, and what they should say instead.</p>
+      <div id="frRows"></div>
+      <div class="actions"><button class="small ghost" id="addFr">+ Add another</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Ready?</h2>
+      <div id="summary" class="note">No changes yet.</div>
+      <div class="actions">
+        <button class="ghost" id="previewBtn">Preview my Hub</button>
+        <button id="saveBtn">Lock &amp; Download</button>
+      </div>
+      <div class="err" id="saveErr"></div>
+    </div>
+
+    <div class="card" id="nextCard" hidden>
+      <h2>Your 2-minute publish 💛</h2>
+      <p class="sub">Your new locked Hub just downloaded. Now:</p>
+      <ol class="steps">
+        <li>Check the file in your Downloads is named exactly <b>index.html</b>. If your Mac named it <b>index (1).html</b>, rename it to <b>index.html</b>.</li>
+        <li>Go to <a href="https://github.com/kaseyleighwellness/kaseyleighwellness.github.io" target="_blank" rel="noopener"><b>github.com/kaseyleighwellness/kaseyleighwellness.github.io</b></a>. Stay on the main page and don't open any folder.</li>
+        <li><b>Add file → Upload files</b> → drag the file in.</li>
+        <li>Click the green <b>Commit changes</b> button. Live in about 2 minutes at <b>hub.kaseyleighwellness.com</b>.</li>
+      </ol>
+      <p class="note">Every old version is kept in GitHub's history, so rolling back is always one click.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const GATE_URL = '/index.html';
+  const ITER = 200000;
+  const SKIP_HOSTS = /^(fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com|www\.w3\.org|code\.jquery\.com|cdn\.tailwindcss\.com)$/i;
+  const PAYLOAD_RE = /const PAYLOAD = "([^"]+)";/;
+  const $ = id => document.getElementById(id);
+  const te = new TextEncoder(), td = new TextDecoder();
+
+  const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const b64e = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+
+  async function deriveKey(pw, salt) {
+    const km = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: ITER, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function decryptPayload(payload, pw) {
+    const [salt, iv, ct] = payload.split('|').map(b64d);
+    const key = await deriveKey(pw, salt);
+    return td.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct));
+  }
+  async function encryptPayload(text, pw) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(pw, salt);
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, te.encode(text)));
+    return [b64e(salt), b64e(iv), b64e(ct)].join('|');
+  }
+
+  const decoder = document.createElement('textarea');
+  function decodeEntities(s) { decoder.innerHTML = s; return decoder.value; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function textOf(f) {
+    const lt = f.indexOf('<'), gt = f.indexOf('>');
+    if (gt !== -1 && (lt === -1 || gt < lt)) f = f.slice(gt + 1);
+    const lastLt = f.lastIndexOf('<'), lastGt = f.lastIndexOf('>');
+    if (lastLt > lastGt) f = f.slice(0, lastLt);
+    f = f.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<(script|style)\b[\s\S]*$/i, ' ').replace(/<[^>]*>/g, ' ');
+    return decodeEntities(f).replace(/\s+/g, ' ').trim();
+  }
+  const tail = (s, n) => s.length > n ? '…' + s.slice(-n) : s;
+
+  let gateSrc = '', plain = '', password = '';
+  let urls = [];       // {id, value, host, occ:[{start,end,amp}], label, context, ctxLong}
+  let passcodes = [];  // {id, value, start, end, context}
+  let queued = [];     // parsed change-code entries with UI state
+
+  // ---------- scanning ----------
+  function scanUrls(html) {
+    const map = new Map();
+    const re = /https?:\/\/[^\s"'<>`\\)\]]+/g;
+    let m;
+    while ((m = re.exec(html))) {
+      const raw = m[0].replace(/[.,;:!?]+$/, '');
+      const start = m.index, end = start + raw.length;
+      const value = raw.replace(/&amp;/g, '&');
+      let host = '';
+      try { host = new URL(value).hostname; } catch (e) { continue; }
+      if (SKIP_HOSTS.test(host)) continue;
+      const before = html.slice(Math.max(0, start - 1500), start);
+      if (/<(link|script)\b[^>]*$/i.test(before)) continue; // stylesheet/script includes
+      const ctxLong = textOf(before);
+      let label = '';
+      if (/<a\b[^>]*$/i.test(before)) {
+        const open = html.indexOf('>', end), close = html.indexOf('</a>', open);
+        if (open !== -1 && close !== -1 && close - open < 3000) label = textOf(html.slice(open + 1, close));
+      }
+      if (!map.has(value)) map.set(value, { id: map.size, value, host, occ: [], label, context: tail(ctxLong, 130), ctxLong: [] });
+      const u = map.get(value);
+      u.occ.push({ start, end, amp: raw.includes('&amp;') });
+      u.ctxLong.push((ctxLong + ' ' + label).toLowerCase());
+      if (!u.label && label) u.label = label;
+    }
+    return [...map.values()];
+  }
+
+  function scanPasscodes(html) {
+    const out = [];
+    const re = /(pass\s*code|meeting\s*password|zoom\s*password)(\s*(?:is)?\s*[:\-–—]?\s*(?:<[^>]+>\s*)*)([^\s<"'&]{2,40})/gi;
+    let m;
+    while ((m = re.exec(html))) {
+      let value = m[3].replace(/[.,;:!?)]+$/, '');
+      if (!value) continue;
+      const start = m.index + m[1].length + m[2].length, end = start + value.length;
+      const ctx = textOf(html.slice(Math.max(0, start - 1500), start));
+      out.push({ id: out.length, value, start, end, context: tail(ctx, 130), ctxLow: ctx.toLowerCase() });
+    }
+    return out;
+  }
+
+  function distance(ctxLow, keywords) {
+    let best = Infinity;
+    for (const k of keywords) {
+      const i = ctxLow.lastIndexOf(k.toLowerCase());
+      if (i !== -1) best = Math.min(best, ctxLow.length - i);
+    }
+    return best;
+  }
+
+  // ---------- rendering ----------
+  function renderLinks() {
+    const box = $('links');
+    if (!urls.length) { box.innerHTML = '<p class="note">I couldn\'t find any links on your Hub.</p>'; return; }
+    box.innerHTML = urls.map(u => `
+      <div class="row" id="lrow${u.id}">
+        <div class="name">${esc(u.label || u.host)}</div>
+        <div class="ctx">${esc(u.context || '')}</div>
+        <input type="url" id="lin${u.id}" value="${esc(u.value)}" data-orig="${esc(u.value)}">
+        <div class="warn" id="lwarn${u.id}" hidden>Links need to start with https://</div>
+      </div>`).join('');
+    urls.forEach(u => $('lin' + u.id).addEventListener('input', refresh));
+  }
+
+  function linkOptionLabel(u) {
+    const name = u.label || u.host;
+    return (name + ' — ' + u.context.replace(/^…/, '').slice(-60) + ' — ' + u.value).slice(0, 160);
+  }
+
+  function renderQueued() {
+    const box = $('queued');
+    box.innerHTML = queued.map((q, i) => {
+      if (q.type === 'link') {
+        const opts = ['<option value="">— choose the link —</option>']
+          .concat(urls.map(u => `<option value="${u.id}" ${q.target === u.id ? 'selected' : ''}>${esc(linkOptionLabel(u))}</option>`)).join('');
+        return `<div class="row" id="qrow${i}">
+          <div class="name">${esc(q.label)}</div>
+          <div class="ctx">Which link on your Hub is this? ${q.target === null ? '<b>I couldn\'t tell. Please pick it.</b>' : 'My best guess is selected. Double-check it.'}</div>
+          <select id="qsel${i}">${opts}</select>
+          <div class="newval">New link: <b>${esc(q.value)}</b></div>
+          <label class="check"><input type="checkbox" id="qchk${i}" ${q.on ? 'checked' : ''}> Make this change</label>
+        </div>`;
+      }
+      if (q.type === 'passcode') {
+        if (!passcodes.length) return `<div class="row" id="qrow${i}">
+          <div class="name">${esc(q.label)}</div>
+          <div class="ctx">Your Hub doesn't show a passcode anywhere. That's fine, the new link has it built in. Nothing to change here.</div></div>`;
+        const opts = ['<option value="">— choose —</option>']
+          .concat(passcodes.map(p => `<option value="${p.id}" ${q.target === p.id ? 'selected' : ''}>${esc(('Passcode "' + p.value + '" — ' + p.context.replace(/^…/, '').slice(-70)).slice(0, 160))}</option>`)).join('');
+        return `<div class="row" id="qrow${i}">
+          <div class="name">${esc(q.label)}</div>
+          <div class="ctx">Which passcode on your Hub is this?</div>
+          <select id="qsel${i}">${opts}</select>
+          <div class="newval">New passcode: <b>${esc(q.value)}</b></div>
+          <label class="check"><input type="checkbox" id="qchk${i}" ${q.on ? 'checked' : ''}> Make this change</label>
+        </div>`;
+      }
+      return '';
+    }).join('');
+    queued.forEach((q, i) => {
+      const sel = $('qsel' + i), chk = $('qchk' + i);
+      if (sel) sel.addEventListener('change', () => { setQueued(i, sel.value === '' ? null : +sel.value, chk.checked); });
+      if (chk) chk.addEventListener('change', () => { setQueued(i, sel.value === '' ? null : +sel.value, chk.checked); });
+    });
+  }
+
+  function setQueued(i, target, on) {
+    const q = queued[i];
+    if (q.type === 'link') {
+      if (q.applied !== null && q.applied !== undefined) {
+        const inp = $('lin' + q.applied);
+        if (inp && inp.value === q.value) inp.value = inp.dataset.orig;
+      }
+      q.applied = null;
+      if (on && target !== null) { $('lin' + target).value = q.value; q.applied = target; }
+    }
+    q.target = target; q.on = on;
+    refresh();
+  }
+
+  function addFrRow(find = '', repl = '') {
+    const d = document.createElement('div');
+    d.className = 'fr';
+    d.innerHTML = `<input type="text" placeholder="Words on the Hub now" class="frFind"><input type="text" placeholder="Change to" class="frRepl"><button class="small ghost" type="button">Remove</button>`;
+    d.querySelector('.frFind').value = find; d.querySelector('.frRepl').value = repl;
+    d.querySelector('button').addEventListener('click', () => { d.remove(); refresh(); });
+    d.querySelectorAll('input').forEach(x => x.addEventListener('input', refresh));
+    $('frRows').appendChild(d);
+  }
+
+  // ---------- building the new Hub ----------
+  function buildChanges() {
+    const edits = [], summary = [], problems = [];
+    urls.forEach(u => {
+      const inp = $('lin' + u.id);
+      const nv = inp.value.trim();
+      const changed = nv !== '' && nv !== u.value;
+      const bad = changed && !/^https?:\/\/\S+$/i.test(nv);
+      $('lrow' + u.id).classList.toggle('changed', changed && !bad);
+      $('lwarn' + u.id).hidden = !bad;
+      if (bad) problems.push(`"${u.label || u.host}" link doesn't look like a web link yet.`);
+      if (changed && !bad) {
+        u.occ.forEach(o => edits.push({ start: o.start, end: o.end, text: o.amp ? nv.replace(/&/g, '&amp;') : nv }));
+        const q = queued.find(x => x.type === 'link' && x.applied === u.id && x.value === nv);
+        summary.push(`<b>${esc(q ? q.label : (u.label || u.host))}</b> → ${esc(nv)}`);
+      }
+    });
+    queued.forEach(q => {
+      if (q.type === 'passcode' && q.on && q.target !== null && passcodes[q.target]) {
+        const p = passcodes[q.target];
+        if (p.value !== q.value) {
+          edits.push({ start: p.start, end: p.end, text: esc(q.value) });
+          summary.push(`Passcode "${esc(p.value)}" → <b>${esc(q.value)}</b>`);
+        }
+      }
+    });
+    edits.sort((a, b) => a.start - b.start);
+    for (let i = 1; i < edits.length; i++) if (edits[i].start < edits[i - 1].end) problems.push('Two changes overlap. Please undo one and try again.');
+    let out = plain;
+    for (let i = edits.length - 1; i >= 0; i--) out = out.slice(0, edits[i].start) + edits[i].text + out.slice(edits[i].end);
+    document.querySelectorAll('#frRows .fr').forEach(row => {
+      const f = row.querySelector('.frFind').value, r = row.querySelector('.frRepl').value;
+      if (!f) return;
+      const n = out.split(f).length - 1;
+      if (n === 0) problems.push(`I couldn't find "${esc(f)}" on your Hub. Check the spelling and spacing.`);
+      else { out = out.split(f).join(r); summary.push(`"${esc(f)}" → "${esc(r)}" (${n} place${n > 1 ? 's' : ''})`); }
+    });
+    return { out, summary, problems };
+  }
+
+  function refresh() {
+    const { summary, problems } = buildChanges();
+    $('summary').innerHTML = (summary.length ? '<b>These changes will be made:</b><ul class="summary">' + summary.map(s => '<li>' + s + '</li>').join('') + '</ul>' : 'No changes yet.')
+      + (problems.length ? '<ul class="summary">' + problems.map(p => '<li class="warn">' + p + '</li>').join('') + '</ul>' : '');
+    $('saveBtn').disabled = !summary.length || problems.length > 0;
+  }
+
+  // ---------- change code ----------
+  function loadCode() {
+    $('codeErr').textContent = '';
+    const raw = $('codeBox').value.trim();
+    if (!raw) return;
+    let data;
+    try { data = JSON.parse(raw.replace(/^```\w*\s*|\s*```$/g, '')); } catch (e) { $('codeErr').textContent = "That code didn't paste in cleanly. Copy the whole thing from Claude and try again."; return; }
+    const list = Array.isArray(data) ? data : data.changes;
+    if (!Array.isArray(list)) { $('codeErr').textContent = "That doesn't look like a Locker change code."; return; }
+    queued.forEach((q, i) => { if (q.type === 'link' && q.applied !== null && q.applied !== undefined) { const inp = $('lin' + q.applied); if (inp && inp.value === q.value) inp.value = inp.dataset.orig; } });
+    queued = [];
+    for (const c of list) {
+      const near = [].concat(c.near || []).filter(Boolean);
+      if (c.type === 'link' && c.value) {
+        let best = null, bestD = Infinity;
+        urls.forEach(u => {
+          if (c.host && !u.host.toLowerCase().includes(String(c.host).toLowerCase())) return;
+          const d = Math.min(...u.ctxLong.map(x => distance(x, near)));
+          if (d < bestD) { bestD = d; best = u.id; }
+        });
+        queued.push({ type: 'link', label: c.label || 'Link', value: c.value, target: best, on: best !== null, applied: null });
+      } else if (c.type === 'passcode' && c.value) {
+        let best = null, bestD = Infinity;
+        passcodes.forEach(p => { const d = distance(p.ctxLow, near); if (d < bestD) { bestD = d; best = p.id; } });
+        queued.push({ type: 'passcode', label: c.label || 'Passcode', value: c.value, target: best, on: best !== null });
+      }
+    }
+    if (!queued.length) { $('codeErr').textContent = "That code didn't have any changes in it."; return; }
+    renderQueued();
+    queued.forEach((q, i) => { if (q.type === 'link') setQueued(i, q.target, q.on); });
+    refresh();
+  }
+
+  // ---------- events ----------
+  $('unlockForm').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const err = $('unlockErr'); err.textContent = '';
+    const pw = $('pw').value;
+    if (!pw) { err.textContent = 'Type your Hub password first, love.'; return; }
+    $('unlockBtn').disabled = true; $('unlockBtn').textContent = 'Unlocking…';
+    try {
+      const r = await fetch(GATE_URL + '?v=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('fetch');
+      gateSrc = await r.text();
+      const m = gateSrc.match(PAYLOAD_RE);
+      if (!m) { err.textContent = "I can't find your locked Hub file. Tell Claude — something's off with it."; return; }
+      try { plain = await decryptPayload(m[1], pw); }
+      catch (x) { err.textContent = "That password isn't right. Use the same one that opens your Hub."; return; }
+      password = pw;
+      urls = scanUrls(plain);
+      passcodes = scanPasscodes(plain);
+      renderLinks();
+      addFrRow();
+      $('lockView').hidden = true; $('editView').hidden = false;
+      refresh();
+    } catch (x) {
+      err.textContent = "I couldn't reach your Hub file. Check your internet and try again.";
+    } finally {
+      $('unlockBtn').disabled = false; $('unlockBtn').textContent = 'Unlock my Hub';
+    }
+  });
+
+  $('loadCode').addEventListener('click', loadCode);
+  $('addFr').addEventListener('click', () => addFrRow());
+
+  $('previewBtn').addEventListener('click', () => {
+    const { out } = buildChanges();
+    const url = URL.createObjectURL(new Blob([out], { type: 'text/html' }));
+    window.open(url, '_blank');
+  });
+
+  $('saveBtn').addEventListener('click', async () => {
+    const err = $('saveErr'); err.textContent = '';
+    const { out, summary, problems } = buildChanges();
+    if (!summary.length || problems.length) return;
+    $('saveBtn').disabled = true; $('saveBtn').textContent = 'Locking…';
+    try {
+      const payload = await encryptPayload(out, password);
+      if (await decryptPayload(payload, password) !== out) throw new Error('verify');
+      const newGate = gateSrc.replace(PAYLOAD_RE, () => 'const PAYLOAD = "' + payload + '";');
+      if (!PAYLOAD_RE.test(newGate) || newGate.match(PAYLOAD_RE)[1] !== payload) throw new Error('splice');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([newGate], { type: 'text/html' }));
+      a.download = 'index.html';
+      document.body.appendChild(a); a.click(); a.remove();
+      $('nextCard').hidden = false;
+      $('nextCard').scrollIntoView({ behavior: 'smooth' });
+    } catch (x) {
+      err.textContent = "Something went wrong while locking. Nothing was changed. Try again, or tell Claude.";
+    } finally {
+      $('saveBtn').textContent = 'Lock & Download'; refresh();
+    }
+  });
+})();
+</script>
+</body>
+</html>
